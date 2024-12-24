@@ -1,4 +1,4 @@
-#!/home/alexlu/Desktop/CodeSnippets/YoutubeMP3Converter/ytmp3/bin/python3
+#!/home/alexlu/Desktop/CodeSnippets/YTMP3GitRepo/YTMP3DesktopApp/YoutubeMP3Converter/ytmp3/bin/python3
 # -*- coding: utf-8 -*-
 import re
 import sys
