@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import yt_dlp
 import os
+import time
 from threading import Thread
 
 class YouTubeDownloaderGUI:
@@ -36,7 +37,7 @@ class YouTubeDownloaderGUI:
         self.browse_btn.grid(row=1, column=2, sticky=tk.W, pady=5, padx=5)
         
         # Download Button
-        self.download_btn = ttk.Button(main_frame, text="Download", command=self.start_download)
+        self.download_btn = ttk.Button(main_frame, text="Convert", command=self.start_download)
         self.download_btn.grid(row=2, column=0, columnspan=3, pady=20)
         
         # Progress Bar
@@ -61,13 +62,14 @@ class YouTubeDownloaderGUI:
         try:
             url = self.url_entry.get().strip()
             output_path = self.output_path.get()
-            
+
             if not url:
                 raise ValueError("Please enter a YouTube URL")
-            
+
             if not output_path:
                 raise ValueError("Please select an output location")
-            
+
+            # Set the output template for yt-dlp
             ydl_opts = {
                 'format': 'bestaudio/best',
                 'postprocessors': [{
@@ -78,22 +80,35 @@ class YouTubeDownloaderGUI:
                 'outtmpl': os.path.join(output_path, '%(title)s.%(ext)s'),
                 'progress_hooks': [self.progress_hook],
             }
-            
+
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 self.status_var.set("Downloading...")
-                ydl.download([url])
-                
-            self.status_var.set("Download completed!")
-            messagebox.showinfo("Success", "Download completed successfully!")
-            
+                info_dict = ydl.extract_info(url, download=True)
+
+            # Get the actual downloaded file path from info_dict
+            downloaded_file = ydl.prepare_filename(info_dict).replace('.webm', '.mp3')
+
+            # Ensure the file exists
+            if os.path.exists(downloaded_file):
+                current_time = time.time()  # Get the current time in seconds
+
+                # Set both the access time and modification time to the current time
+                os.utime(downloaded_file, (current_time, current_time))
+
+                self.status_var.set("Download completed!")
+                messagebox.showinfo("Success", "Download completed successfully!")
+            else:
+                raise FileNotFoundError(f"Downloaded file not found: {downloaded_file}")
+
         except Exception as e:
             self.status_var.set(f"Error: {str(e)}")
             messagebox.showerror("Error", str(e))
-        
+
         finally:
             self.progress.stop()
             self.download_btn.config(state='normal')
             self.url_entry.config(state='normal')
+
 
     def progress_hook(self, d):
         if d['status'] == 'downloading':
