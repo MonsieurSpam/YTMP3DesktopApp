@@ -25,29 +25,34 @@ class YouTubeDownloaderGUI:
         ttk.Label(main_frame, text="YouTube URL:").grid(row=0, column=0, sticky=tk.W, pady=5)
         self.url_entry = ttk.Entry(main_frame, width=50)
         self.url_entry.grid(row=0, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5, padx=5)
+
+        # Custom Filename Entry
+        ttk.Label(main_frame, text="File Name:").grid(row=1, column=0, sticky=tk.W, pady=5)
+        self.filename_entry = ttk.Entry(main_frame, width=50)
+        self.filename_entry.grid(row=1, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5, padx=5)
         
         # Output Directory
-        ttk.Label(main_frame, text="Save Location:").grid(row=1, column=0, sticky=tk.W, pady=5)
+        ttk.Label(main_frame, text="Save Location:").grid(row=2, column=0, sticky=tk.W, pady=5)
         self.output_path = tk.StringVar()
         self.output_entry = ttk.Entry(main_frame, textvariable=self.output_path)
-        self.output_entry.grid(row=1, column=1, sticky=(tk.W, tk.E), pady=5, padx=5)
+        self.output_entry.grid(row=2, column=1, sticky=(tk.W, tk.E), pady=5, padx=5)
         
         # Browse Button
         self.browse_btn = ttk.Button(main_frame, text="Browse", command=self.browse_location)
-        self.browse_btn.grid(row=1, column=2, sticky=tk.W, pady=5, padx=5)
+        self.browse_btn.grid(row=2, column=2, sticky=tk.W, pady=5, padx=5)
         
         # Download Button
         self.download_btn = ttk.Button(main_frame, text="Convert", command=self.start_download)
-        self.download_btn.grid(row=2, column=0, columnspan=3, pady=20)
+        self.download_btn.grid(row=3, column=0, columnspan=3, pady=20)
         
         # Progress Bar
         self.progress = ttk.Progressbar(main_frame, length=400, mode='indeterminate')
-        self.progress.grid(row=3, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=5)
+        self.progress.grid(row=4, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=5)
         
         # Status Label
         self.status_var = tk.StringVar(value="Ready")
         self.status_label = ttk.Label(main_frame, textvariable=self.status_var)
-        self.status_label.grid(row=4, column=0, columnspan=3, pady=5)
+        self.status_label.grid(row=5, column=0, columnspan=3, pady=5)
         
         # Set default output directory to Downloads folder
         default_path = os.path.join(os.path.expanduser("~"), "Downloads")
@@ -62,12 +67,21 @@ class YouTubeDownloaderGUI:
         try:
             url = self.url_entry.get().strip()
             output_path = self.output_path.get()
+            custom_filename = self.filename_entry.get().strip()
 
             if not url:
                 raise ValueError("Please enter a YouTube URL")
 
             if not output_path:
-                raise ValueError("Please select an output location")
+                raise ValueError("Please select an output location") 
+
+            # Use custom filename if provided, otherwise use video title
+            if custom_filename:
+                output_template = f"{custom_filename}.%(ext)s"
+            else:
+                output_template = '%(title)s.%(ext)s'
+                
+            print("Using title", output_template)
 
             # Set the output template for yt-dlp
             ydl_opts = {
@@ -77,7 +91,7 @@ class YouTubeDownloaderGUI:
                     'preferredcodec': 'mp3',
                     'preferredquality': '192',
                 }],
-                'outtmpl': os.path.join(output_path, '%(title)s.%(ext)s'),
+                'outtmpl': os.path.join(output_path, output_template),
                 'progress_hooks': [self.progress_hook],
             }
 
@@ -85,20 +99,25 @@ class YouTubeDownloaderGUI:
                 self.status_var.set("Downloading...")
                 info_dict = ydl.extract_info(url, download=True)
 
-            # Get the actual downloaded file path from info_dict
-            downloaded_file = ydl.prepare_filename(info_dict).replace('.webm', '.mp3')
+                # Get the final filename
+                if custom_filename:
+                    final_filename = f"{custom_filename}.mp3"
+                else:
+                    final_filename = f"{info_dict['title']}.mp3"
+                
+                output_filename = os.path.join(output_path, final_filename)
 
             # Ensure the file exists
-            if os.path.exists(downloaded_file):
+            if os.path.exists(output_filename):
                 current_time = time.time()  # Get the current time in seconds
 
                 # Set both the access time and modification time to the current time
-                os.utime(downloaded_file, (current_time, current_time))
+                os.utime(output_filename, (current_time, current_time))
 
                 self.status_var.set("Download completed!")
                 messagebox.showinfo("Success", "Download completed successfully!")
             else:
-                raise FileNotFoundError(f"Downloaded file not found: {downloaded_file}")
+                raise FileNotFoundError(f"Downloaded file not found: {output_filename}")
 
         except Exception as e:
             self.status_var.set(f"Error: {str(e)}")
